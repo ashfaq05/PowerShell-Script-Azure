@@ -1,0 +1,50 @@
+param(
+    [parameter(Mandatory=$true)]
+    [string] $resourceGroupName = "Analytics",
+
+    [parameter(Mandatory=$false)]
+    [string] $azureRunAsConnectionName = "AzureRunAsConnection",
+
+    [parameter(Mandatory=$true)]
+    [string] $capacityName = "powerbiembeddedtest1",
+
+    [parameter(Mandatory=$true)]
+    [string] $scalingToTier
+)
+
+
+$runAsConnectionProfile = Get-AutomationConnection -Name $azureRunAsConnectionName
+Add-AzureRmAccount -ServicePrincipal -TenantId $runAsConnectionProfile.TenantId -ApplicationId $runAsConnectionProfile.ApplicationId -CertificateThumbprint ` $runAsConnectionProfile.CertificateThumbprint | Out-Null
+Write-Output "Authenticated with Automation Run As Account." 
+
+$startTime = Get-Date
+Write-Output "Azure Automation local time: $startTime." 
+Write-Output "Time zone to convert to: $toTimeZone." 
+
+$pbiEmbCap = Get-AzureRmPowerBIEmbeddedCapacity -ResourceGroupName $resourceGroupName -Name $capacityName
+Write-Output "PBI Capacity name found: $($pbiEmbCap.Name)"
+Write-Output "Current PBI Capacity status: $($pbiEmbCap.State), pricing tier: $($pbiEmbCap.Sku)" 
+
+
+if ($pbiEmbCap.Sku -ne $scalingToTier){
+
+    if($pbiEmbCap.State -eq 'Active')
+    {
+        Write-Output "Starting with stopping the service ($capacityName)" 
+        Suspend-AzureRmPowerBIEmbeddedCapacity -Name $capacityName -ResourceGroupName $resourceGroupName
+        Write-Output "The service ($capacityName) was stoped"
+    }
+
+    Write-Output "Starting with scaling the service $capacityName to $scalingToTier" 
+    Update-AzureRmPowerBIEmbeddedCapacity -Name $capacityName -sku $scalingToTier
+    Write-Output "The service $capacityName was scaled to $scalingToTier tier"
+
+    if(($pbiEmbCap.State -ne 'Active') -and ($pbiEmbCap.State -ne 'Succeeded'))
+    {
+        Write-Output "Started with resuming the service $capacityName" 
+        Resume-AzureRmPowerBIEmbeddedCapacity -Name $capacityName -ResourceGroupName $resourceGroupName
+        Write-Output "The service ($capacityName) was resumed"
+    }
+}
+
+Write-Output "Script finished."
