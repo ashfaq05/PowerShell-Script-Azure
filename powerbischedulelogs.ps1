@@ -1,11 +1,8 @@
 
 
-#$username = "nhapowerbi@nha675.onmicrosoft.com"
-#$passwd = "Indiaaa@100"
+#$username = ""
+#$passwd = ""
 
-
-$username = "powerbisupport@gulfoil.co.in"
-$passwd = "4pXPG5Urxt"
 
 $secpasswd = ConvertTo-SecureString -String $passwd -AsPlainText -Force
 $myCred = New-Object Management.Automation.PSCredential ($username, $secpasswd)
